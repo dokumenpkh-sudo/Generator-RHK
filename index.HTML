@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Laporan RHK Panggul</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- LIBRARY SUPABASE -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { 
+            font-family: 'Times New Roman', Times, serif; 
+            background: #f0f4f8; 
+            font-size: 12pt;
+            line-height: 1.6;
+        }
+        .laporan { 
+            background: white; 
+            padding: 40px; 
+            line-height: 1.6;
+            font-size: 12pt;
+        }
+        .laporan p, .laporan li, .laporan td, .laporan div:not(.kop-wrapper) {
+            text-align: justify !important;
+        }
+
+        /* STYLING KOP SURAT PRESISI KEMENSOS */
+        .kop-wrapper { width: 100%; margin-bottom: 20px; }
+        .kop-table { width: 100%; border-collapse: collapse; border: none; margin-bottom: 6px; }
+        .kop-table td { border: none !important; padding: 0 !important; vertical-align: middle; }
+        .kop-logo-td { width: 110px; text-align: left; }
+        .kop-logo-img { width: 100px; height: auto; display: block; }
+        .kop-teks-td { text-align: center !important; }
+        .kop-teks-td h1 { font-size: 14pt; font-weight: bold; margin: 0; padding: 0; line-height: 1.2; letter-spacing: 0.5px; text-transform: uppercase; }
+        .kop-teks-td h2 { font-size: 13pt; font-weight: bold; margin: 2px 0 0 0; padding: 0; line-height: 1.2; letter-spacing: 0.5px; text-transform: uppercase; }
+        .kop-teks-td h3 { font-size: 13pt; font-weight: bold; margin: 2px 0 0 0; padding: 0; line-height: 1.2; letter-spacing: 0.5px; text-transform: uppercase; }
+        .kop-teks-td p { font-size: 9.5pt !important; margin: 4px 0 0 0; padding: 0; line-height: 1.2; text-align: center !important; font-weight: normal; }
+        
+        .garis-kop-ganda {
+            border-top: 3px solid #000;
+            border-bottom: 1px solid #000;
+            height: 3px;
+            margin-top: 4px;
+            margin-bottom: 20px;
+        }
+
+        h4 { font-weight: bold; margin: 20px 0 8px 0; font-size: 12pt; }
+        .text-center { text-align: center !important; }
+        .text-right { text-align: right !important; }
+        .text-justify { text-align: justify !important; }
+        
+        .tabel-kegiatan, .tabel-detail { border-collapse: collapse; width: 100%; margin-top: 8px; }
+        .tabel-kegiatan td, .tabel-detail td { padding: 4px 8px; vertical-align: top; text-align: left; border: none; }
+        .tabel-kegiatan .label, .tabel-detail .label { width: 200px; font-weight: bold; white-space: nowrap; }
+
+        label { font-weight: 500; }
+        .step { display: none; }
+        .step.active { display: block; animation: fadeIn 0.3s; }
+        .info-pilihan { background-color: #eff6ff; border-left:4px solid #165DFF; padding:12px; border-radius:6px; margin-bottom:16px; }
+        @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+        .hidden { display: none; }
+        .laporan ul { padding-left: 20px; }
+        .laporan ul li { text-align: justify; }
+
+        .dynamic-field { margin-bottom: 10px; }
+        .dynamic-field label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+        .dynamic-field input, .dynamic-field textarea {
+            width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;
+            font-family: 'Times New Roman', Times, serif; font-size: 12pt;
+        }
+        .field-group { background: #f9fafb; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid #2563eb; }
+        .field-group h4 { margin-top: 0; margin-bottom: 12px; font-size: 14px; color: #1e3a8a; }
+
+        /* STYLING TANDA TANGAN */
+        .ttd-container { display: flex; flex-direction: column; align-items: flex-end; margin-top: 40px; }
+        .ttd-box { text-align: left; display: inline-block; min-width: 250px; }
+        .ttd-img-wrapper { height: 70px; display: flex; align-items: center; justify-content: flex-start; margin: 4px 0; }
+        .ttd-img { max-height: 70px; max-width: 180px; object-fit: contain; }
+
+        /* STYLING LEMBAR LAMPIRAN DOKUMENTASI */
+        .page-break { page-break-before: always; margin-top: 40px; padding-top: 20px; border-top: 2px dashed #ccc; }
+        @media print { .page-break { border-top: none; margin-top: 0; padding-top: 0; } }
+        .tabel-dokumentasi { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .tabel-dokumentasi td { width: 50%; border: 1px solid #000; padding: 10px; vertical-align: top; text-align: center !important; }
+        .img-dok-container { width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #f9fafb; border: 1px solid #e5e7eb; margin-bottom: 8px; }
+        .img-dok { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .caption-dok { font-size: 11pt; font-style: italic; text-align: center !important; margin: 0; }
+
+        @media print {
+            body { background: white; }
+            .container { max-width: 100% !important; padding: 0 !important; }
+            .card { box-shadow: none !important; padding: 0 !important; }
+            footer, button, .flex.justify-between, #sec-login { display: none !important; }
+            .laporan { padding: 0 !important; border: none !important; }
+        }
+
+        footer { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #6b7280; border-top: 1px solid #e5e7eb; padding: 16px 0; margin-top: 24px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <!-- HALAMAN LOGIN -->
+    <div id="sec-login" class="max-w-md mx-auto mt-20 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <h2 class="text-xl font-bold text-center text-blue-800 mb-2">
+            <i class="fa fa-lock mr-2"></i>Akses Generator RHK
+        </h2>
+        <p class="text-xs text-center text-gray-500 mb-6">Silakan login menggunakan akun terdaftar</p>
+        
+        <div class="mb-3">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Email</label>
+            <input type="email" id="login-email" class="w-full p-2 border rounded text-sm focus:outline-none focus:border-blue-500" placeholder="email@domain.com">
+        </div>
+        <div class="mb-5">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Password</label>
+            <input type="password" id="login-password" class="w-full p-2 border rounded text-sm focus:outline-none focus:border-blue-500" placeholder="••••••••">
+        </div>
+        <button onclick="prosesLogin()" id="btn-login" class="w-full bg-blue-600 text-white py-2 rounded text-sm font-semibold hover:bg-blue-700 transition">
+            <i class="fa fa-sign-in mr-2"></i> Masuk Aplikasi
+        </button>
+    </div>
+
+    <!-- APLIKASI UTAMA (DILINDUNGI LOGIN) -->
+    <div id="app-utama" class="container mx-auto px-4 py-6 max-w-4xl hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-blue-800">
+                <i class="fa fa-file-text-o mr-2"></i>Generator Laporan RHK Panggul
+            </h1>
+            <button onclick="prosesLogout()" class="bg-red-500 text-white text-xs px-3 py-1.5 rounded hover:bg-red-600">
+                <i class="fa fa-power-off mr-1"></i> Keluar
+            </button>
+        </div>
+
+        <!-- LANGKAH 1: PILIH RHK -->
+        <div class="card bg-white p-6 rounded-lg shadow mb-6 step active" id="step1">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">Langkah 1: Pilih Nomor Rencana Hasil Kerja (RHK)</h2>
+            <select id="pilih-rhk" class="w-full p-3 border rounded mb-4">
+                <option value="">-- Pilih RHK --</option>
+                <option value="1">RHK 1: Penyaluran bansos KPK PKH tepat sasaran & tepat jumlah</option>
+                <option value="2">RHK 2: Pertemuan P2K2 sesuai ketentuan</option>
+                <option value="3">RHK 3: Verifikasi komitmen pendidikan, kesehatan & kesejahteraan sosial</option>
+                <option value="4">RHK 4: Tersedianya data KPM graduasi sesuai instrumen</option>
+                <option value="5">RHK 5: Verifikasi, validasi & pemutakhiran data KPM</option>
+                <option value="6">RHK 6: Penanganan kasus adaptif / pengaduan / kebencanaan / kerentanan</option>
+                <option value="7">RHK 7: Tersedianya laporan analisis bulanan pelaksanaan PKH</option>
+                <option value="8">RHK 8: Arahan pimpinan & penugasan program Kemensos</option>
+                <option value="9">RHK 9: Penyebaran berita baik & informasi program Kemensos</option>
+            </select>
+            <button onclick="lanjutLangkah2()" class="bg-blue-600 text-white px-6 py-2 rounded">
+                Lanjut <i class="fa fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+
+        <!-- LANGKAH 2: PILIH LAPORAN HARIAN -->
+        <div class="card bg-white p-6 rounded-lg shadow mb-6 step" id="step2">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">Langkah 2: Pilih Laporan Kegiatan Harian</h2>
+            <p class="mb-2 text-sm text-gray-600">RHK Terpilih: <span id="nama-rhk-terpilih" class="font-bold text-blue-700"></span></p>
+            <select id="pilih-laporan" class="w-full p-3 border rounded mb-4">
+                <option value="">-- Pilih Salah Satu Laporan --</option>
+            </select>
+            <div class="flex gap-3">
+                <button onclick="kembaliLangkah1()" class="bg-gray-600 text-white px-4 py-2 rounded">
+                    <i class="fa fa-arrow-left mr-2"></i> Kembali
+                </button>
+                <button onclick="lanjutLangkah3()" class="bg-blue-600 text-white px-4 py-2 rounded">
+                    Lanjut <i class="fa fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- LANGKAH 3: KONFIRMASI & ISI DATA -->
+        <div class="card bg-white p-6 rounded-lg shadow mb-6 step" id="step3">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">Langkah 3: Konfirmasi & Isi Data</h2>
+
+            <div class="info-pilihan">
+                <p class="font-semibold text-blue-800 mb-1">✅ RHK Terpilih:</p>
+                <p id="tampil-rhk-di-langkah3" class="mb-2 text-gray-800"></p>
+                <p class="font-semibold text-blue-800 mb-1">✅ Laporan Kegiatan Terpilih:</p>
+                <p id="tampil-laporan-di-langkah3" class="text-gray-800 font-medium"></p>
+            </div>
+
+            <div id="div-materi" class="mb-4 hidden">
+                <label for="pilih-materi" class="font-semibold">Pilih Materi P2K2 yang Disampaikan</label>
+                <select id="pilih-materi" class="w-full p-2 border rounded mt-1">
+                    <option value="">-- Pilih Materi --</option>
+                </select>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label>Nama Lengkap Petugas</label>
+                    <input type="text" id="nama-petugas" class="w-full p-2 border rounded" placeholder="Contoh: Sukron Hasim">
+                </div>
+                <div>
+                    <label>Jabatan</label>
+                    <select id="jabatan" class="w-full p-2 border rounded">
+                        <option value="Pengelola Layanan Operasional">Pengelola Layanan Operasional</option>
+                        <option value="Penata Layanan Operasional" selected>Penata Layanan Operasional</option>
+                    </select>
+                </div>
+                <div>
+                    <label>NIP</label>
+                    <input type="text" id="nip" class="w-full p-2 border rounded" placeholder="Contoh: 199002172025211047">
+                </div>
+                <div>
+                    <label>Tanggal Pelaksanaan</label>
+                    <input type="date" id="tgl-pelaksanaan" class="w-full p-2 border rounded">
+                </div>
+                <div class="flex gap-2">
+                    <div>
+                        <label>Jam Mulai</label>
+                        <input type="time" id="jam-mulai" class="w-full p-2 border rounded">
+                    </div>
+                    <div>
+                        <label>Jam Selesai</label>
+                        <input type="time" id="jam-selesai" class="w-full p-2 border rounded">
+                    </div>
+                </div>
+                <div>
+                    <label>Lokasi / Tempat Pelaksanaan</label>
+                    <input type="text" id="lokasi" class="w-full p-2 border rounded" placeholder="Contoh: Desa Nglebeng, Kec. Panggul">
+                </div>
+
+                <!-- MENU UPLOAD TANDA TANGAN -->
+                <div class="bg-blue-50 p-3 rounded border border-blue-200">
+                    <label class="block font-semibold text-blue-900 mb-1">
+                        <i class="fa fa-pencil-square-o mr-1"></i> Upload Tanda Tangan (Opsional)
+                    </label>
+                    <input type="file" id="input-ttd" accept="image/*" onchange="previewTtd(event)" class="w-full text-sm text-gray-600 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                </div>
+
+                <!-- MENU UPLOAD FOTO DOKUMENTASI -->
+                <div class="bg-green-50 p-3 rounded border border-green-200">
+                    <label class="block font-semibold text-green-900 mb-1">
+                        <i class="fa fa-camera mr-1"></i> Upload Foto Dokumentasi (Bisa >1 Foto)
+                    </label>
+                    <input type="file" id="input-dok" accept="image/*" multiple onchange="prosesFotoDokumentasi(event)" class="w-full text-sm text-gray-600 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-green-600 file:text-white hover:file:bg-green-700 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- CONTAINER INPUT KETERANGAN FOTO -->
+            <div id="wrapper-input-caption" class="mb-4 hidden">
+                <div class="field-group" style="border-left-color: #16a34a;">
+                    <h4>📸 Keterangan Foto Dokumentasi</h4>
+                    <div id="container-keterangan-foto" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <div id="dynamic-fields-container" class="mb-4"></div>
+
+            <div class="grid md:grid-cols-1 gap-4 mb-4">
+                <div>
+                    <label>Kendala & Penyelesaian</label>
+                    <textarea id="kendala" rows="2" class="w-full p-2 border rounded" placeholder="Contoh: Tidak ada kendala berarti..."></textarea>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="kembaliLangkah2()" class="bg-gray-600 text-white px-4 py-2 rounded">
+                    <i class="fa fa-arrow-left mr-2"></i> Kembali
+                </button>
+                <button onclick="buatLaporan()" class="bg-green-600 text-white px-6 py-2 rounded">
+                    <i class="fa fa-magic mr-2"></i> GENERATE LAPORAN
+                </button>
+            </div>
+        </div>
+
+        <!-- HASIL LAPORAN -->
+        <div class="card bg-white p-6 rounded-lg shadow mb-6 step" id="step4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-green-700">✅ Laporan Hasil Generate</h2>
+                <div class="gap-2 hidden md:flex">
+                    <button onclick="window.print()" class="bg-gray-700 text-white px-3 py-1 rounded text-sm">
+                        <i class="fa fa-print mr-1"></i> Cetak / Simpan PDF
+                    </button>
+                    <button onclick="downloadWord()" class="bg-green-700 text-white px-3 py-1 rounded text-sm">
+                        <i class="fa fa-file-word-o mr-1"></i> Unduh Word
+                    </button>
+                </div>
+            </div>
+
+            <div class="laporan border" id="wadah-laporan">
+                <!-- KOP SURAT -->
+                <div class="kop-wrapper">
+                    <table class="kop-table">
+                        <tr>
+                            <td class="kop-logo-td">
+                                <img src="logo.png" alt="Logo Kemensos" class="kop-logo-img" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/e/e0/Logo_Kementerian_Sosial_RI.png'">
+                            </td>
+                            <td class="kop-teks-td">
+                                <h1>KEMENTERIAN SOSIAL REPUBLIK INDONESIA</h1>
+                                <h2>DIREKTORAT JENDERAL PERLINDUNGAN DAN JAMINAN SOSIAL</h2>
+                                <h3>DIREKTORAT PERLINDUNGAN SOSIAL NON KEBENCANAAN</h3>
+                                <p>Jalan Salemba Raya No. 28 Jakarta Pusat 10430 Telp. (021) 3103591 http://www.kemsos.go.id</p>
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="garis-kop-ganda"></div>
+                </div>
+
+                <h3 class="text-center font-bold uppercase mt-2 mb-6" id="judul-laporan"></h3>
+
+                <h4>A. PENDAHULUAN</h4>
+                <p class="font-semibold">1. Umum</p>
+                <p id="isi-umum" class="text-justify"></p>
+
+                <p class="font-semibold mt-3">2. Maksud dan Tujuan</p>
+                <p id="isi-tujuan" class="text-justify"></p>
+
+                <p class="font-semibold mt-3">3. Ruang Lingkup</p>
+                <p id="isi-ruang" class="text-justify"></p>
+
+                <p class="font-semibold mt-3">4. Dasar Hukum</p>
+                <p id="isi-dasar" class="text-justify"></p>
+
+                <h4 class="mt-6">B. KEGIATAN YANG DILAKSANAKAN</h4>
+                
+                <table class="tabel-kegiatan" id="tabel-kegiatan-utama">
+                    <tr><td class="label">Nama Pelaksana</td><td class="nilai">: <span id="val-nama"></span></td></tr>
+                    <tr><td class="label">Periode Laporan</td><td class="nilai">: <span id="val-periode"></span></td></tr>
+                    <tr><td class="label">Tempat Pelaksanaan</td><td class="nilai">: <span id="val-tempat"></span></td></tr>
+                    <tbody id="tabel-rhk2-extra" class="hidden">
+                        <tr><td class="label">Jumlah Peserta (Target)</td><td class="nilai">: <span id="val-jumlah-peserta"></span></td></tr>
+                        <tr><td class="label">Realisasi Kehadiran</td><td class="nilai">: <span id="val-kehadiran"></span></td></tr>
+                    </tbody>
+                </table>
+
+                <div id="detail-kegiatan-container" class="mt-4 hidden">
+                    <p class="font-semibold">Detail Kegiatan</p>
+                    <table class="tabel-detail" id="detail-kegiatan-table"></table>
+                </div>
+
+                <div id="bagian-rincian-kegiatan" class="mt-4 hidden">
+                    <p id="isi-rincian-kegiatan" class="text-justify"></p>
+                </div>
+
+                <h4 class="mt-6">C. HASIL YANG DICAPAI</h4>
+                <p id="isi-hasil" class="text-justify"></p>
+
+                <h4 class="mt-6">D. SIMPULAN DAN SARAN</h4>
+                <p class="font-semibold">1. Simpulan</p>
+                <p id="isi-simpulan" class="text-justify"></p>
+                <p class="font-semibold mt-3">2. Saran</p>
+                <p id="isi-saran" class="text-justify"></p>
+
+                <h4 class="mt-6">E. PENUTUP</h4>
+                <p id="isi-penutup" class="text-justify"></p>
+
+                <!-- BLOK TANDA TANGAN -->
+                <div class="ttd-container">
+                    <div class="ttd-box">
+                        <p id="tt-tempat">Dibuat di Trenggalek</p>
+                        <p id="tt-tanggal">Pada Tanggal ....................</p>
+                        <p id="tt-jabatan">.................................</p>
+                        <div class="ttd-img-wrapper" id="ttd-space">
+                            <img id="img-ttd-hasil" src="" class="ttd-img hidden" alt="Tanda Tangan">
+                        </div>
+                        <p id="tt-nama" class="font-bold underline"></p>
+                        <p id="tt-nip"></p>
+                    </div>
+                </div>
+
+                <!-- LEMBAR BARU: LAMPIRAN DOKUMENTASI -->
+                <div class="page-break" id="wadah-lampiran-dokumentasi">
+                    <h3 class="text-center font-bold uppercase mb-4">LAMPIRAN DOKUMENTASI KEGIATAN</h3>
+                    <div id="wadah-tabel-foto"></div>
+                </div>
+            </div>
+
+            <button onclick="kembaliLangkah3()" class="mt-6 bg-gray-600 text-white px-4 py-2 rounded">
+                <i class="fa fa-arrow-left mr-2"></i> Ubah Data
+            </button>
+        </div>
+    </div>
+
+    <footer>
+        Created By Sukron Hasim
+    </footer>
+
+    <script>
+        // KONFIGURASI SUPABASE LENGKAP
+        const SUPABASE_URL = "https://anvmzidrexuvmbncijfl.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFudm16aWRyZXh1dm1ibmNpamZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMjMwOTUsImV4cCI6MjEwMTY5OTA5NX0.SKbiNEYYCqcgD8poKCc_IcNXGJXWLQpYLubSRFB65qQ";
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // CEK SESI LOGIN SAAT HALAMAN DIMUAT
+        document.addEventListener('DOMContentLoaded', async function() {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (session) {
+                bukaAplikasi();
+            }
+
+            const hariIni = new Date().toISOString().split('T')[0];
+            document.getElementById('tgl-pelaksanaan').value = hariIni;
+            document.getElementById('jam-mulai').value = '08:00';
+            document.getElementById('jam-selesai').value = '12:00';
+        });
+
+        async function prosesLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btn = document.getElementById('btn-login');
+
+            if (!email || !password) return alert("⚠️ Masukkan email dan password!");
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa fa-spinner fa-spin mr-2"></i> Memproses...`;
+
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                alert("Login Gagal: " + error.message);
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa fa-sign-in mr-2"></i> Masuk Aplikasi`;
+            } else {
+                bukaAplikasi();
+            }
+        }
+
+        function bukaAplikasi() {
+            document.getElementById('sec-login').classList.add('hidden');
+            document.getElementById('app-utama').classList.remove('hidden');
+        }
+
+        async function prosesLogout() {
+            await _supabase.auth.signOut();
+            location.reload();
+        }
+
+        const dataRHK = {
+            1: {
+                nama: "Terlaksananya penyaluran bansos kepada KPM PKH tepat sasaran dan tepat jumlah",
+                laporan: [
+                    "Melakukan edukasi dan sosialisasi pencairan secara tunai dan non tunai",
+                    "Melaksanakan Supervisi Permasalahan Bantuan Sosial",
+                    "Melaksanakan Monitoring/Pemantauan Penyaluran Bantuan Sosial",
+                    "Melaksanakan Penelitian penyaluran bantuan Sosial"
+                ],
+                fields: [
+                    { id: "field_nama_kpm", label: "Nama KPM / Sasaran", type: "text", placeholder: "Contoh: PANIYEM, SENEN, ROINEM" },
+                    { id: "field_nik", label: "NIK KPM", type: "text", placeholder: "Contoh: 3503015809510001" },
+                    { id: "field_alamat", label: "Alamat KPM", type: "text", placeholder: "Contoh: Dusun Nglumpang RT 30 RW 10" },
+                    { id: "field_jenis_bantuan", label: "Jenis Bantuan", type: "text", placeholder: "Contoh: PKH, BPNT" },
+                    { id: "field_jumlah_dana", label: "Jumlah Dana (Rp)", type: "text", placeholder: "Contoh: 1.500.000" }
+                ]
+            },
+            2: {
+                nama: "Terlaksananya pertemuan P2K2 sesuai dengan ketentuan",
+                laporan: [
+                    "Melaksanakan Pertemuan Peningkatan Kemampuan Keluarga (P2K2)"
+                ],
+                materiList: [
+                    { id: 1, judul: "Menjadi Orang Tua yang Lebih Baik", modul: "Pendidikan dan Pengasuhan Anak", sesi: 1,
+                      deskripsi: "Pendamping memulai pelaksanaan sesi dengan mengajak peserta berdiskusi kelompok tentang sifat baik diri sendiri, memutar video inspiratif mengenai kekompakan suami-istri, serta memberikan lembar komitmen untuk menyelaraskan kata dan perbuatan dalam mengasuh anak di rumah.",
+                      poin: ["Diskusi kelompok tentang sifat baik diri sendiri", "Video inspiratif kekompakan suami-istri", "Lembar komitmen menyelaraskan kata dan perbuatan"] },
+                    { id: 2, judul: "Memahami Perilaku Anak", modul: "Pendidikan dan Pengasuhan Anak", sesi: 2,
+                      deskripsi: "Pelaksanaan sesi ini diisi dengan permainan interaktif untuk merasakan dampak kata-kata pujian, diikuti dengan simulasi cara menahan amarah, sehingga peserta paham teknik menghargai perilaku baik anak dan menghindari hukuman fisik yang traumatis.",
+                      poin: ["Permainan interaktif dampak pujian", "Simulasi menahan amarah", "Teknik menghargai perilaku baik", "Menghindari hukuman fisik"] },
+                    { id: 3, judul: "Memahami Cara Anak Usia Dini Belajar", modul: "Pendidikan dan Pengasuhan Anak", sesi: 3,
+                      deskripsi: "Dalam sesi ini, pendamping mempraktikkan langsung beberapa permainan edukatif sederhana bersama peserta, lalu menugaskan mereka untuk memanfaatkan benda-benda di dapur atau halaman rumah sebagai sarana belajar sambil bermain bagi anak.",
+                      poin: ["Praktik permainan edukatif sederhana", "Pemanfaatan benda di dapur/halaman", "Belajar sambil bermain"] },
+                    { id: 4, judul: "Membantu Anak Sukses di Sekolah", modul: "Pendidikan dan Pengasuhan Anak", sesi: 4,
+                      deskripsi: "Pendamping memandu diskusi mengenai hambatan anak saat belajar, memberikan tips membagi waktu, serta meminta peserta mensimulasikan cara menyapa guru di sekolah agar tercipta kerja sama yang baik demi prestasi anak.",
+                      poin: ["Diskusi hambatan belajar anak", "Tips membagi waktu", "Simulasi menyapa guru", "Kerjasama orang tua-guru"] },
+                    { id: 5, judul: "Mengelola Keuangan Keluarga", modul: "Pengelolaan Keuangan dan Perencanaan Usaha", sesi: 5,
+                      deskripsi: "Pelaksanaan sesi menggunakan alat bantu poster 'Pintar Mengatur Pengeluaran' dan lembar cerita, di mana peserta dilatih langsung menyusun anggaran bulanan dan mencoret daftar keinginan yang belum mendesak agar uang saku cukup.",
+                      poin: ["Poster 'Pintar Mengatur Pengeluaran'", "Menyusun anggaran bulanan", "Mengurangi keinginan tidak mendesak"] },
+                    { id: 6, judul: "Cermat Meminjam dan Menabung", modul: "Pengelolaan Keuangan dan Perencanaan Usaha", sesi: 6,
+                      deskripsi: "Pendamping mengajak peserta menonton film pendek tentang jeratan utang, dilanjutkan dengan latihan menghitung bunga pinjaman dari berbagai tempat, serta membuat celengan target untuk memotivasi kebiasaan menabung secara rutin.",
+                      poin: ["Film pendek jeratan utang", "Menghitung bunga pinjaman", "Celengan target menabung"] },
+                    { id: 7, judul: "Memulai Usaha", modul: "Pengelolaan Keuangan dan Perencanaan Usaha", sesi: 7,
+                      deskripsi: "Sesi ini dijalankan dengan metode analisis SWOT sederhana, di mana peserta berkelompok untuk mengidentifikasi potensi pasar di desa mereka, menghitung modal awal, serta merancang strategi pemasaran produk agar jualan mereka laku keras.",
+                      poin: ["Analisis SWOT sederhana", "Identifikasi potensi pasar", "Menghitung modal awal", "Strategi pemasaran"] },
+                    { id: 8, judul: "Pentingnya Gizi dan Layanan Kesehatan Ibu Hamil", modul: "Kesehatan dan Gizi", sesi: 8,
+                      deskripsi: "Pendamping menggunakan grafik '1.000 Hari Pertama Kehidupan' untuk menjelaskan masa kritis janin, membagikan contoh menu piring makanku yang bergizi seimbang, serta memandu simulasi pengisian kartu kontrol pemeriksaan kehamilan.",
+                      poin: ["Grafik 1.000 HPK", "Menu piring makanku bergizi", "Simulasi kartu kontrol kehamilan"] },
+                    { id: 9, judul: "Pentingnya Gizi untuk Ibu Menyusui dan Balita", modul: "Kesehatan dan Gizi", sesi: 9,
+                      deskripsi: "Pelaksanaan dilakukan dengan demonstrasi tekstur MPASI sesuai usia anak, dilanjutkan dengan diskusi kelompok mengenai pentingnya posyandu, pemberian ASI eksklusif, serta pembagian suplemen vitamin A secara terjadwal.",
+                      poin: ["Demonstrasi MPASI", "Diskusi posyandu", "ASI eksklusif", "Suplemen vitamin A"] },
+                    { id: 10, judul: "Kesakitan pada Anak dan Kesehatan Lingkungan", modul: "Kesehatan dan Gizi", sesi: 10,
+                      deskripsi: "Pendamping mengedukasi peserta mengenai langkah darurat mengatasi diare dengan oralit, yang dikombinasikan dengan inspeksi visual lewat gambar mengenai syarat rumah sehat, penggunaan air bersih, serta kepemilikan jamban keluarga.",
+                      poin: ["Langkah darurat diare (oralit)", "Inspeksi rumah sehat", "Air bersih dan jamban keluarga"] },
+                    { id: 11, judul: "Upaya Pencegahan Kekerasan dan Perlakuan Salah pada Anak", modul: "Perlindungan Anak", sesi: 11,
+                      deskripsi: "Pelaksanaan sesi ini berfokus pada visualisasi 'Matriks Jempol' untuk mengelompokkan tindakan baik dan buruk, disertai diskusi kasus nyata agar peserta mampu mendeteksi serta mencegah kekerasan fisik maupun seksual sejak dini.",
+                      poin: ["Matriks Jempol", "Diskusi kasus nyata", "Deteksi kekerasan fisik/seksual"] },
+                    { id: 12, judul: "Pencegahan Penelantaran dan Eksploitasi Anak", modul: "Perlindungan Anak", sesi: 12,
+                      deskripsi: "Pendamping memutar kisah anak yang terpaksa bekerja, memandu peserta mengisi lembar hak anak, serta memberikan edukasi hukum mengenai sanksi eksploitasi guna memastikan semua anak KPM tetap bersekolah dan memiliki akta lahir.",
+                      poin: ["Kisah anak bekerja", "Lembar hak anak", "Edukasi hukum eksploitasi", "Akta lahir"] },
+                    { id: 13, judul: "Pelayanan bagi Penyandang Disabilitas Berat", modul: "Kesejahteraan Sosial", sesi: 13,
+                      deskripsi: "Pendamping mengajak peserta melakukan simulasi keterbatasan fisik (seperti menutup mata atau tangan), agar muncul rasa empati untuk memberikan pelayanan kasih sayang, pemenuhan gizi, dan perlindungan hak bagi penyandang disabilitas.",
+                      poin: ["Simulasi keterbatasan fisik", "Empati dan pelayanan", "Pemenuhan gizi dan hak"] },
+                    { id: 14, judul: "Pentingnya Kesejahteraan Lanjut Usia", modul: "Kesejahteraan Sosial", sesi: 14,
+                      deskripsi: "Sesi ditutup dengan senam lansia ringan bersama peserta, diikuti diskusi mengenai cara menghadapi perubahan perilaku lansia yang sensitif, serta merancang aktivitas sosial di lingkungan agar para lansia tetap merasa dihargai.",
+                      poin: ["Senam lansia ringan", "Diskusi perubahan perilaku lansia", "Aktivitas sosial untuk lansia"] }
+                ],
+                fields: [
+                    { id: "field_jumlah_peserta", label: "Jumlah Peserta (Target)", type: "text", placeholder: "Contoh: 30 KPM" },
+                    { id: "field_kehadiran", label: "Realisasi Kehadiran", type: "text", placeholder: "Contoh: 25 KPM" }
+                ]
+            },
+            3: {
+                nama: "Terlaksananya Verifikasi Komitmen Pendidikan, Kesehatan dan Kesejahteraan Sosial secara akurat sesuai ketentuan",
+                laporan: [
+                    "Melaksanakan Verifikasi Komitmen Pendidikan,Kesehatan dan Kesejahteraan Sosial",
+                    "Melakukan pendampingan, mediasi, dan fasilitasi kepada KPM PKH dalam proses perubahan perilaku, pola pikir yang mandiri dan produktif"
+                ],
+                fields: [
+                    { id: "field_komponen", label: "Komponen yang Diverifikasi", type: "text", placeholder: "Contoh: Balita, Lansia" },
+                    { id: "field_jumlah_kpm", label: "Jumlah KPM yang Diverifikasi", type: "text", placeholder: "Contoh: 12 KPM" },
+                    { id: "field_rincian", label: "Rincian Hasil Verifikasi (Rutin/Tidak Rutin)", type: "textarea", placeholder: "Contoh: Balita: 5 rutin, 2 tidak rutin; Lansia: 4 rutin, 1 tidak rutin" }
+                ]
+            },
+            4: {
+                nama: "Tersedianya Data KPM graduasi yang disusun sesuai dengan instrumen ketentuan",
+                laporan: [
+                    "Melakukan usulan KPM Graduasi mandiri dan Pemberdayaan PPSE"
+                ],
+                fields: [
+                    { id: "field_nama_kpm", label: "Nama KPM yang Diusulkan", type: "text", placeholder: "Contoh: Paniyem, MISIYEM" },
+                    { id: "field_nik", label: "NIK KPM", type: "text", placeholder: "Contoh: 3503015809510001" },
+                    { id: "field_jenis_usaha", label: "Jenis Usaha (untuk PPSE)", type: "text", placeholder: "Contoh: Kantin, Ternak Kambing" },
+                    { id: "field_status", label: "Status Kesediaan", type: "text", placeholder: "Contoh: Bersedia graduasi / Berminat PPSE" }
+                ]
+            },
+            5: {
+                nama: "Terlaksananya Verifikasi, Validasi dan Pemutakhiran Data KPM secara akurat sesuai ketentuan",
+                laporan: [
+                    "Melaksanakan Pemutakhiran Data",
+                    "Melaksanakan proses bisnis PKH yang meliputi verifikasi validasi calon penerima bantuan sosial"
+                ],
+                fields: [
+                    { id: "field_nama_kpm", label: "Nama KPM / Calon Penerima", type: "text", placeholder: "Contoh: Nindyo Dani Pamungki" },
+                    { id: "field_nik", label: "NIK", type: "text", placeholder: "Contoh: 3510132305870004" },
+                    { id: "field_perubahan_data", label: "Perubahan Data yang Dilakukan", type: "textarea", placeholder: "Contoh: Update listrik, bahan bakar memasak, fasilitas rumah" },
+                    { id: "field_hasil_verifikasi", label: "Hasil Verifikasi", type: "text", placeholder: "Contoh: Valid / Tidak Valid" }
+                ]
+            },
+            6: {
+                nama: "Terlaksananya kegiatan kasus adaptif (Respon kasus/pengaduan/kebencanaan/kerentanan) disusun lengkap dan akurat",
+                laporan: [
+                    "Melaksanakan Respon Kasus/Pengaduan/kebencanaan/Kerentanan"
+                ],
+                fields: [
+                    { id: "field_jenis_kasus", label: "Jenis Kasus / Kerentanan", type: "text", placeholder: "Contoh: RTLH, Lansia terlantar, Disabilitas" },
+                    { id: "field_nama_pengadu", label: "Nama Pengadu / Sasaran", type: "text", placeholder: "Contoh: Sipon, Abdul Karim" },
+                    { id: "field_lokasi_kasus", label: "Lokasi Kasus", type: "text", placeholder: "Contoh: Dusun Krajan RT 02 RW 01" },
+                    { id: "field_kronologi", label: "Kronologi / Deskripsi Kasus", type: "textarea", placeholder: "Contoh: Rumah tidak layak huni, kondisi darurat..." }
+                ]
+            },
+            7: {
+                nama: "Tersedianya Data Analisis Laporan Bulanan yang disusun sesuai ketentuan",
+                laporan: [
+                    "Membuat laporan bulanan pelaksanaan PKH dan laporan lainnya."
+                ],
+                fields: [
+                    { id: "field_periode", label: "Periode Laporan Bulanan", type: "text", placeholder: "Contoh: Januari 2026" },
+                    { id: "field_rincian_kegiatan", label: "Rincian Kegiatan Bulanan", type: "textarea", placeholder: "Contoh: 1. Pendampingan rutin kepada KPM PKH\n2. Verifikasi dan validasi data KPM\n3. Monitoring kepatuhan KPM\n4. Sosialisasi kebijakan PKH\n5. Koordinasi dengan pemerintah desa\n6. Penyusunan laporan kegiatan" },
+                    { id: "field_hasil", label: "Hasil yang Dicapai", type: "textarea", placeholder: "Contoh: Terlaksananya pendampingan KPM secara rutin\nData KPM lebih akurat dan mutakhir\nMeningkatnya pemahaman KPM\nTerjalinnya koordinasi yang baik\nTersusunnya laporan kegiatan" },
+                    { id: "field_saran", label: "Saran untuk Perbaikan", type: "textarea", placeholder: "Contoh: Diperlukan peningkatan koordinasi lintas sektor\nPerlu adanya peningkatan kapasitas SDM PKH\nOptimalisasi sarana dan prasarana pendukung" }
+                ]
+            },
+            8: {
+                nama: "Terlaksananya direktif pimpinan sesuai penugasan / program Kemensos",
+                laporan: [
+                    "Melaksanakan Tindak Lanjut Hasil Pemeriksaan (TLHP)",
+                    "Melakukan sosialisasi kebijakan dan bisnis proses PKH kepada aparat pemerintah tingkat kecamatan, desa/ kelurahan, KPM PKH, dan masyarakat umum secara berkala melalui Pertemuan atau media sosial dll",
+                    "Mengikuti Rapat Koordinasi,Sosialisasi Kebijakan Proses Bisnis PKH dan Penguatan Kapasitas SDM.",
+                    "Tugas Lainnya (Penugasan lainnya program Kementrian Sosial)"
+                ],
+                fields: [
+                    { id: "field_jenis_tugas", label: "Jenis Tugas / Arahan", type: "text", placeholder: "Contoh: TLHP, Sosialisasi, Rapat Koordinasi" },
+                    { id: "field_instruksi", label: "Instruksi / Arahan Pimpinan", type: "textarea", placeholder: "Contoh: Menindaklanjuti temuan audit..." },
+                    { id: "field_hasil_tlhp", label: "Hasil Tindak Lanjut", type: "textarea", placeholder: "Contoh: Temuan telah diperbaiki..." }
+                ]
+            },
+            9: {
+                nama: "Terlaksananya Penyebaran Berita Baik Kementerian Sosial",
+                laporan: [
+                    "Berperan aktif dalam memanfaatkan, menggunakan, melibatkan dan menyebarkan Media Sosial untuk menyampaikan semua program di Kementerian Sosial"
+                ],
+                fields: [
+                    { id: "field_platform", label: "Platform Media Sosial", type: "text", placeholder: "Contoh: Instagram, X, TikTok, Facebook" },
+                    { id: "field_jumlah_posting", label: "Jumlah Posting yang Diinteraksi", type: "text", placeholder: "Contoh: 12 posting" },
+                    { id: "field_total_interaksi", label: "Total Interaksi (Like + Share + Komen)", type: "text", placeholder: "Contoh: 53 interaksi" },
+                    { id: "field_jenis_konten", label: "Jenis Konten yang Disebar", type: "textarea", placeholder: "Contoh: Program bansos, berita baik Kemensos..." }
+                ]
+            }
+        };
+
+        let rhkPilih = null;
+        let laporanTerpilih = null;
+        let dataTtdBase64 = "";
+        let arrayFotoDokumentasi = [];
+
+        function previewTtd(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) { dataTtdBase64 = e.target.result; }
+                reader.readAsDataURL(file);
+            } else { dataTtdBase64 = ""; }
+        }
+
+        function prosesFotoDokumentasi(event) {
+            const files = Array.from(event.target.files);
+            if (files.length === 0) {
+                arrayFotoDokumentasi = [];
+                renderInputCaption();
+                return;
+            }
+
+            arrayFotoDokumentasi = [];
+            let processedCount = 0;
+
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const maxW = 800; const maxH = 600;
+                        let w = img.width; let h = img.height;
+
+                        if (w > h) {
+                            if (w > maxW) { h = Math.round((h * maxW) / w); w = maxW; }
+                        } else {
+                            if (h > maxH) { w = Math.round((w * maxH) / h); h = maxH; }
+                        }
+
+                        canvas.width = w; canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+                        arrayFotoDokumentasi.push({
+                            id: index,
+                            src: compressedBase64,
+                            caption: `Dokumentasi Pelaksanaan Kegiatan Foto ${index + 1}`
+                        });
+
+                        processedCount++;
+                        if (processedCount === files.length) { renderInputCaption(); }
+                    };
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderInputCaption() {
+            const wrapper = document.getElementById('wrapper-input-caption');
+            const container = document.getElementById('container-keterangan-foto');
+            if (arrayFotoDokumentasi.length === 0) {
+                wrapper.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+            wrapper.classList.remove('hidden');
+            let html = '';
+            arrayFotoDokumentasi.forEach((item, idx) => {
+                html += `
+                    <div class="flex items-center gap-3 bg-white p-2 border rounded">
+                        <img src="${item.src}" class="w-16 h-12 object-cover rounded border">
+                        <div class="flex-1">
+                            <label class="text-xs font-semibold text-gray-600 block mb-1">Keterangan Foto ${idx + 1}</label>
+                            <input type="text" id="caption-foto-${idx}" value="${item.caption}" onchange="updateCaption(${idx}, this.value)" class="w-full text-xs p-1.5 border rounded">
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function updateCaption(index, val) {
+            if (arrayFotoDokumentasi[index]) { arrayFotoDokumentasi[index].caption = val; }
+        }
+
+        function tampilLangkah(nomor) {
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+            document.getElementById(`step${nomor}`).classList.add('active');
+        }
+
+        function lanjutLangkah2() {
+            const val = document.getElementById('pilih-rhk').value;
+            if (!val) return alert("⚠️ Silakan pilih RHK terlebih dahulu!");
+            rhkPilih = val;
+            document.getElementById('nama-rhk-terpilih').textContent = `${val}. ${dataRHK[val].nama}`;
+            const pilihLap = document.getElementById('pilih-laporan');
+            pilihLap.innerHTML = `<option value="">-- Pilih Salah Satu Laporan --</option>`;
+            dataRHK[val].laporan.forEach(teks => {
+                pilihLap.innerHTML += `<option value="${teks}">${teks}</option>`;
+            });
+            tampilLangkah(2);
+        }
+
+        function kembaliLangkah1() { tampilLangkah(1); }
+        function kembaliLangkah2() { tampilLangkah(2); }
+        function kembaliLangkah3() { tampilLangkah(3); }
+
+        function lanjutLangkah3() {
+            const lapVal = document.getElementById('pilih-laporan').value;
+            if (!lapVal) return alert("⚠️ Silakan pilih laporan kegiatan terlebih dahulu!");
+            laporanTerpilih = lapVal;
+            document.getElementById('tampil-rhk-di-langkah3').textContent = `${rhkPilih}. ${dataRHK[rhkPilih].nama}`;
+            document.getElementById('tampil-laporan-di-langkah3').textContent = laporanTerpilih;
+
+            const divMateri = document.getElementById('div-materi');
+            const selectMateri = document.getElementById('pilih-materi');
+            if (rhkPilih === '2') {
+                divMateri.classList.remove('hidden');
+                selectMateri.innerHTML = '<option value="">-- Pilih Materi --</option>';
+                dataRHK[2].materiList.forEach(m => {
+                    selectMateri.innerHTML += `<option value="${m.id}">Sesi ${m.sesi}: ${m.judul} (${m.modul})</option>`;
+                });
+            } else {
+                divMateri.classList.add('hidden');
+                selectMateri.innerHTML = '<option value="">--</option>';
+            }
+
+            renderDynamicFields(rhkPilih);
+            tampilLangkah(3);
+        }
+
+        function renderDynamicFields(rhkId) {
+            const container = document.getElementById('dynamic-fields-container');
+            const rhkData = dataRHK[rhkId];
+            if (!rhkData || !rhkData.fields || rhkData.fields.length === 0) {
+                container.innerHTML = `<p class="text-gray-500 text-sm">Tidak ada field tambahan untuk RHK ini.</p>`;
+                return;
+            }
+
+            let html = `<div class="field-group"><h4>📋 Data Khusus ${rhkData.nama.split(':')[0]}</h4><div class="grid md:grid-cols-1 gap-3">`;
+            rhkData.fields.forEach(f => {
+                const id = f.id; const label = f.label; const type = f.type || 'text'; const placeholder = f.placeholder || '';
+                const rows = type === 'textarea' ? 4 : 1;
+                html += `<div class="dynamic-field"><label for="${id}">${label}</label>`;
+                if (type === 'textarea') {
+                    html += `<textarea id="${id}" rows="${rows}" class="w-full p-2 border rounded" placeholder="${placeholder}"></textarea>`;
+                } else {
+                    html += `<input type="${type}" id="${id}" class="w-full p-2 border rounded" placeholder="${placeholder}">`;
+                }
+                html += `</div>`;
+            });
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        function buatLaporan() {
+            const namaPetugas = document.getElementById('nama-petugas').value || "........................................";
+            const jabatan = document.getElementById('jabatan').value;
+            const nip = document.getElementById('nip').value || "........................................";
+            const tgl = document.getElementById('tgl-pelaksanaan').value;
+            const lokasi = document.getElementById('lokasi').value || "........................................";
+            const kendala = document.getElementById('kendala').value || "Tidak terdapat kendala yang berarti dalam pelaksanaan kegiatan.";
+
+            const dynamicValues = {};
+            const rhkData = dataRHK[rhkPilih];
+            if (rhkData && rhkData.fields) {
+                rhkData.fields.forEach(f => {
+                    const el = document.getElementById(f.id);
+                    if (el) dynamicValues[f.id] = el.value || '-';
+                });
+            }
+
+            let materiDipilih = null;
+            if (rhkPilih === '2') {
+                const idMateri = parseInt(document.getElementById('pilih-materi').value);
+                if (!idMateri) return alert("⚠️ Silakan pilih materi P2K2 terlebih dahulu!");
+                materiDipilih = dataRHK[2].materiList.find(m => m.id === idMateri);
+                if (!materiDipilih) return alert("Materi tidak ditemukan!");
+            }
+
+            const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+            const d = new Date(tgl);
+            const tglFormat = `${d.getDate()} ${bulanIndo[d.getMonth()]} ${d.getFullYear()}`;
+
+            // ISI LAPORAN UTUH
+            if (rhkPilih === '7' && laporanTerpilih === "Membuat laporan bulanan pelaksanaan PKH dan laporan lainnya.") {
+                const periode = dynamicValues['field_periode'] || '............';
+                const rincianKegiatan = dynamicValues['field_rincian_kegiatan'] || 'Tidak ada rincian kegiatan.';
+                const hasil = dynamicValues['field_hasil'] || 'Tidak ada hasil yang dicapai.';
+                const saran = dynamicValues['field_saran'] || 'Tidak ada saran.';
+
+                document.getElementById('judul-laporan').textContent = `LAPORAN BULANAN (${periode.toUpperCase()}) ${periode.split(' ')[1] || ''} ASN PPPK ${jabatan.toUpperCase()} (PKH)`;
+
+                document.getElementById('isi-umum').innerHTML = `
+                    Program Keluarga Harapan (PKH) merupakan program bantuan sosial bersyarat yang bertujuan untuk meningkatkan taraf hidup keluarga penerima manfaat (KPM) melalui akses layanan pendidikan, kesehatan, dan kesejahteraan sosial.
+                    <br><br>
+                    Sebagai ASN PPPK SDM PKH, peran utama adalah melaksanakan pendampingan, verifikasi, validasi, serta pembinaan kepada KPM agar tujuan program dapat tercapai secara optimal. Laporan bulanan ini disusun sebagai bentuk pertanggungjawaban pelaksanaan tugas selama periode ${periode}.
+                `;
+
+                document.getElementById('isi-tujuan').innerHTML = `
+                    Maksud penyusunan laporan bulanan ini adalah untuk memberikan gambaran pelaksanaan tugas ASN PPPK SDM PKH selama satu bulan.
+                    <br><br>
+                    Tujuannya antara lain:
+                    <br>• Mengetahui capaian kegiatan pendampingan PKH
+                    <br>• Menjadi bahan evaluasi kinerja
+                    <br>• Mendukung akuntabilitas dan transparansi pelaksanaan program
+                    <br>• Sebagai bahan pelaporan kepada atasan dan instansi terkait
+                `;
+
+                document.getElementById('isi-ruang').innerHTML = `Laporan ini meliputi seluruh kegiatan ASN PPPK SDM PKH yang dilaksanakan selama bulan ${periode}.`;
+
+                document.getElementById('isi-dasar').innerHTML = `
+                    Dasar pelaksanaan kegiatan dan penyusunan laporan ini adalah:
+                    <br>• Undang-Undang Nomor 13 Tahun 2011 tentang Penanganan Fakir Miskin
+                    <br>• Peraturan Presiden tentang Program Keluarga Harapan
+                    <br>• Peraturan Menteri Sosial Republik Indonesia terkait PKH
+                    <br>• Surat Keputusan pengangkatan ASN PPPK SDM PKH
+                    <br>• Petunjuk teknis pelaksanaan Program Keluarga Harapan
+                `;
+
+                document.getElementById('val-nama').textContent = namaPetugas;
+                document.getElementById('val-periode').textContent = periode;
+                document.getElementById('val-tempat').textContent = lokasi;
+
+                document.getElementById('detail-kegiatan-container').classList.add('hidden');
+                document.getElementById('tabel-rhk2-extra').classList.add('hidden');
+
+                document.getElementById('bagian-rincian-kegiatan').classList.remove('hidden');
+                document.getElementById('isi-rincian-kegiatan').innerHTML = `
+                    <b>Kegiatan yang telah dilaksanakan selama bulan ${periode} meliputi:</b>
+                    <br><br>
+                    ${rincianKegiatan.replace(/\n/g, '<br>')}
+                `;
+
+                document.getElementById('isi-hasil').innerHTML = `
+                    <b>Hasil yang dicapai dari pelaksanaan kegiatan selama bulan ${periode} antara lain:</b>
+                    <br><br>
+                    ${hasil.replace(/\n/g, '<br>')}
+                    <br><br>
+                    <b>Kendala yang dihadapi:</b> ${kendala}
+                `;
+
+                document.getElementById('isi-simpulan').innerHTML = `
+                    Pelaksanaan tugas ASN PPPK SDM PKH selama bulan ${periode} berjalan dengan baik dan sesuai dengan ketentuan yang berlaku. Kegiatan pendampingan dan pemutakhiran data dapat dilaksanakan secara optimal meskipun terdapat beberapa kendala di lapangan.
+                `;
+
+                document.getElementById('isi-saran').innerHTML = saran.replace(/\n/g, '<br>');
+
+                document.getElementById('isi-penutup').innerHTML = `
+                    Demikian laporan bulanan ASN PPPK SDM PKH ini disusun sebagai bentuk pertanggungjawaban pelaksanaan tugas. Diharapkan laporan ini dapat memberikan gambaran yang jelas mengenai kegiatan yang telah dilaksanakan serta menjadi bahan evaluasi untuk peningkatan kinerja ke depannya.
+                `;
+
+            } else if (rhkPilih === '2' && laporanTerpilih === "Melaksanakan Pertemuan Peningkatan Kemampuan Keluarga (P2K2)") {
+                document.getElementById('judul-laporan').textContent = `LAPORAN TENTANG PERTEMUAN PENINGKATAN KEMAMPUAN KELUARGA (P2K2) KELOMPOK ${lokasi.toUpperCase()} BULAN ${bulanIndo[d.getMonth()].toUpperCase()} ${d.getFullYear()}`;
+
+                document.getElementById('isi-umum').innerHTML = `
+                    Pertemuan Peningkatan Kapasitas Keluarga (P2K2) merupakan kegiatan rutin bagi Keluarga Penerima Manfaat (KPM) Program Keluarga Harapan (PKH). P2K2 bertujuan untuk meningkatkan pengetahuan dan kemampuan KPM dalam mengelola keuangan, kesehatan, pendidikan, dan pengasuhan anak. Pertemuan ini menjadi wadah pembelajaran interaktif, di mana KPM diajak untuk memahami peran penting mereka dalam keluarga, serta mempelajari pengetahuan yang positif dan konsisten.
+                    <br><br>
+                    Kegiatan ini juga berfungsi sebagai forum refleksi bersama, di mana peserta dapat berbagi pengalaman sehari-hari dalam mengelola keuangan, kesehatan, pendidikan, dan pengasuhan anak, sekaligus memperoleh pengetahuan baru yang dapat langsung dipraktikkan di rumah.
+                `;
+
+                document.getElementById('isi-tujuan').innerHTML = `
+                    <b>Maksud:</b> Melaporkan secara tertulis pelaksanaan kegiatan P2K2 yang telah dilakukan.
+                    <br><br>
+                    <b>Tujuan:</b> Meningkatkan pemahaman KPM PKH mengenai materi <b>${materiDipilih.modul} – Sesi ${materiDipilih.sesi}: ${materiDipilih.judul}</b>. Mendorong KPM PKH untuk menerapkan hasil-hasil pertemuan dalam kehidupan sehari-hari guna meningkatkan kualitas pengasuhan dan dukungan pendidikan bagi anak.
+                `;
+
+                document.getElementById('isi-ruang').innerHTML = `
+                    Ruang lingkup laporan ini meliputi waktu, tempat, peserta, dan materi yang disampaikan dalam kegiatan P2K2 di kelompok dampingan yang berada di ${lokasi}, Kabupaten Trenggalek.
+                `;
+
+                document.getElementById('isi-dasar').innerHTML = `
+                    Pelaksanaan Pertemuan Peningkatan Kemampuan Keluarga (P2K2), yang merupakan bagian integral dari Program Keluarga Harapan (PKH), diatur dalam Peraturan Menteri Sosial Republik Indonesia Nomor 1 Tahun 2018 tentang Program Keluarga Harapan.
+                    <br><br>
+                    • Secara spesifik, Pasal 50 Peraturan ini menyebutkan bahwa Peningkatan Kemampuan Keluarga dilaksanakan melalui Pertemuan Peningkatan Kemampuan Keluarga (P2K2).
+                    <br>
+                    • P2K2 didefinisikan sebagai proses belajar secara terstruktur untuk mempercepat terjadinya perubahan perilaku pada Keluarga Penerima Manfaat (KPM) PKH.
+                `;
+
+                document.getElementById('val-nama').textContent = namaPetugas;
+                document.getElementById('val-periode').textContent = '-';
+                document.getElementById('val-tempat').textContent = lokasi;
+
+                const extraRow = document.getElementById('tabel-rhk2-extra');
+                extraRow.classList.remove('hidden');
+                document.getElementById('val-jumlah-peserta').textContent = dynamicValues['field_jumlah_peserta'] || '-';
+                document.getElementById('val-kehadiran').textContent = dynamicValues['field_kehadiran'] || '-';
+
+                document.getElementById('detail-kegiatan-container').classList.add('hidden');
+
+                document.getElementById('bagian-rincian-kegiatan').classList.remove('hidden');
+                document.getElementById('isi-rincian-kegiatan').innerHTML = `
+                    <p><b>Modul ${materiDipilih.sesi}: ${materiDipilih.judul}</b></p>
+                    <p>${materiDipilih.deskripsi}</p>
+                    <br>
+                    <p><b>Poin-poin penting yang disampaikan:</b></p>
+                    <ul>
+                        ${materiDipilih.poin.map(p => `<li>${p}</li>`).join('')}
+                    </ul>
+                    <br>
+                    <p><b>Pesan Kunci:</b> "Pendidikan adalah tangga untuk keluar dari kemiskinan." Peran orang tua bukan sekadar membayar biaya sekolah, tetapi memberikan dukungan moral dan motivasi agar anak merasa dihargai di jalur pendidikannya.</p>
+                `;
+
+                document.getElementById('isi-hasil').innerHTML = `
+                    <b>Hasil yang dicapai dari pelaksanaan Sesi ${materiDipilih.sesi}: ${materiDipilih.judul}</b>
+                    <br><br>
+                    ${dynamicValues['field_jumlah_peserta'] || '-'} peserta hadir dari target.
+                    <br><br>
+                    <b>Kendala yang dihadapi:</b> ${kendala}
+                `;
+
+                document.getElementById('isi-simpulan').innerHTML = `
+                    Pertemuan kelompok berjalan lancar dengan partisipasi aktif dari peserta. Materi tentang <b>${materiDipilih.judul}</b> memberikan wawasan baru bagi orang tua mengenai cara-cara praktis mendukung anak, serta memperkuat kesadaran bahwa orang tua adalah pendidik pertama dan utama.
+                `;
+
+                document.getElementById('isi-saran').innerHTML = `
+                    1. Diharapkan dapat menerapkan pengetahuan yang diperoleh dalam kehidupan sehari-hari.
+                    <br>2. Orang tua perlu lebih konsisten memberikan stimulasi positif.
+                    <br>3. Dokumentasi kegiatan sebaiknya dilengkapi dengan catatan refleksi peserta.
+                `;
+
+                document.getElementById('isi-penutup').innerHTML = `Demikian laporan ini dibuat untuk dapat dipergunakan sebagaimana mestinya dan sebagai bahan pertanggungjawaban pelaksanaan tugas.`;
+
+            } else {
+                document.getElementById('judul-laporan').textContent = `LAPORAN TENTANG ${laporanTerpilih.toUpperCase()}`;
+
+                document.getElementById('isi-umum').innerHTML = 
+                    `${laporanTerpilih} merupakan bagian penting dalam pelaksanaan Program Keluarga Harapan (PKH) guna memastikan Keluarga Penerima Manfaat (KPM) memahami mekanisme serta pelaksanaan kegiatan dengan baik. Kegiatan ini dilaksanakan untuk mendukung kelancaran pelaksanaan program agar tepat sasaran, tepat jumlah, dan sesuai ketentuan yang berlaku.`;
+
+                document.getElementById('isi-tujuan').innerHTML = `
+                    a. Mendukung kelancaran pelaksanaan kegiatan dan penyaluran bantuan sosial secara transparan dan akuntabel.
+                    <br>b. Memberikan pemahaman yang jelas kepada KPM terkait maksud, tujuan, dan tata cara pelaksanaan kegiatan.
+                    <br>c. Mencegah terjadinya kesalahan, penyalahgunaan, dan hal-hal yang merugikan dalam proses pelaksanaan.
+                    <br>d. Meningkatkan kesadaran dan partisipasi aktif KPM PKH dalam setiap kegiatan program.
+                `;
+
+                document.getElementById('isi-ruang').innerHTML = `Ruang lingkup kegiatan ini meliputi pelaksanaan ${laporanTerpilih} yang dilaksanakan di wilayah kerja ${lokasi}, dengan sasaran yang telah ditentukan.`;
+
+                document.getElementById('isi-dasar').innerHTML = `
+                    1. Undang-Undang Nomor 11 Tahun 2009 tentang Kesejahteraan Sosial.
+                    <br>2. Undang-Undang Nomor 13 Tahun 2011 tentang Penanganan Fakir Miskin.
+                    <br>3. Peraturan Menteri Sosial RI Nomor 1 Tahun 2018 tentang Program Keluarga Harapan.
+                    <br>4. Surat Tugas dan Instruksi Kerja yang berlaku di lingkungan kerja unit pelaksana.
+                `;
+
+                document.getElementById('val-nama').textContent = namaPetugas;
+                document.getElementById('val-periode').textContent = '-';
+                document.getElementById('val-tempat').textContent = lokasi;
+
+                document.getElementById('tabel-rhk2-extra').classList.add('hidden');
+
+                const detailContainer = document.getElementById('detail-kegiatan-container');
+                const detailTable = document.getElementById('detail-kegiatan-table');
+                if (dynamicValues && Object.keys(dynamicValues).length > 0) {
+                    detailContainer.classList.remove('hidden');
+                    let rows = '';
+                    for (const [key, val] of Object.entries(dynamicValues)) {
+                        if (val && val !== '-') {
+                            const field = rhkData.fields.find(f => f.id === key);
+                            const label = field ? field.label : key;
+                            rows += `<tr><td class="label">${label}</td><td class="nilai">: ${val}</td></tr>`;
+                        }
+                    }
+                    if (rows) { detailTable.innerHTML = rows; } else { detailContainer.classList.add('hidden'); }
+                } else { detailContainer.classList.add('hidden'); }
+
+                document.getElementById('bagian-rincian-kegiatan').classList.add('hidden');
+
+                document.getElementById('isi-hasil').innerHTML = `Kegiatan berjalan lancar.<br><br><b>Kendala:</b> ${kendala}`;
+                document.getElementById('isi-simpulan').textContent = `Kegiatan ${laporanTerpilih} telah terlaksana dengan baik dan lancar sesuai jadwal serta ketentuan yang berlaku.`;
+                document.getElementById('isi-saran').innerHTML = `
+                    - Kegiatan serupa perlu dilaksanakan secara berkala dan berkelanjutan.
+                    <br>- Perlu peningkatan pendampingan khusus bagi sasaran yang masih mengalami kesulitan.
+                    <br>- Koordinasi dengan pihak terkait perlu terus ditingkatkan.
+                `;
+                document.getElementById('isi-penutup').textContent = `Demikian laporan ini dibuat sebagai bentuk pertanggungjawaban atas pelaksanaan kegiatan ${laporanTerpilih}.`;
+            }
+
+            // SETUP BLOK TANDA TANGAN
+            document.getElementById('tt-tempat').textContent = `Dibuat di Trenggalek`;
+            document.getElementById('tt-tanggal').textContent = `Pada Tanggal ${tglFormat}`;
+            document.getElementById('tt-jabatan').textContent = jabatan;
+            document.getElementById('tt-nama').textContent = namaPetugas;
+            document.getElementById('tt-nip').textContent = `NIP. ${nip}`;
+
+            const imgTtdHasil = document.getElementById('img-ttd-hasil');
+            if (dataTtdBase64) {
+                imgTtdHasil.src = dataTtdBase64;
+                imgTtdHasil.classList.remove('hidden');
+            } else { imgTtdHasil.classList.add('hidden'); }
+
+            // SETUP LAMPIRAN DOKUMENTASI
+            const wadahLampiran = document.getElementById('wadah-lampiran-dokumentasi');
+            const wadahTabel = document.getElementById('wadah-tabel-foto');
+
+            if (arrayFotoDokumentasi.length > 0) {
+                wadahLampiran.classList.remove('hidden');
+                let htmlTabel = '<table class="tabel-dokumentasi"><tbody>';
+
+                for (let i = 0; i < arrayFotoDokumentasi.length; i += 2) {
+                    htmlTabel += '<tr>';
+                    const foto1 = arrayFotoDokumentasi[i];
+                    htmlTabel += `
+                        <td>
+                            <div class="img-dok-container"><img src="${foto1.src}" class="img-dok"></div>
+                            <p class="caption-dok">${foto1.caption}</p>
+                        </td>
+                    `;
+
+                    if (i + 1 < arrayFotoDokumentasi.length) {
+                        const foto2 = arrayFotoDokumentasi[i + 1];
+                        htmlTabel += `
+                            <td>
+                                <div class="img-dok-container"><img src="${foto2.src}" class="img-dok"></div>
+                                <p class="caption-dok">${foto2.caption}</p>
+                            </td>
+                        `;
+                    } else { htmlTabel += '<td></td>'; }
+
+                    htmlTabel += '</tr>';
+                }
+
+                htmlTabel += '</tbody></table>';
+                wadahTabel.innerHTML = htmlTabel;
+            } else {
+                wadahLampiran.classList.add('hidden');
+                wadahTabel.innerHTML = '';
+            }
+
+            tampilLangkah(4);
+        }
+
+        function downloadWord() {
+            const content = document.getElementById('wadah-laporan').innerHTML;
+            const styles = document.querySelector('style').innerHTML;
+            const html = `
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8"><style>${styles}</style></head>
+            <body style="font-family:'Times New Roman', Times, serif; font-size:12pt; background:white; padding:40px;">
+                ${content}
+            </body>
+            </html>
+            `;
+            const blob = new Blob([html], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Laporan_RHK_${rhkPilih}_${new Date().toISOString().slice(0,10)}.doc`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
